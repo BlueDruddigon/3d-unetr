@@ -92,7 +92,7 @@ class DiceCELoss(nn.Module):
           include_background=include_background,
           sigmoid=sigmoid,
           softmax=softmax,
-          reduction=self.reduction,
+          reduction=reduction,
           squared_pred=squared_pred,
           smooth=smooth
         )

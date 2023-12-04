@@ -1,9 +1,9 @@
 import argparse
+import os
 from typing import Callable, Optional, Sequence, Union
 
 import torch
 import torch.distributed as dist
-import torch.multiprocessing as mp
 import torch.nn as nn
 import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
@@ -112,6 +112,9 @@ def parse_args():
     parser.add_argument('--warmup-epochs', type=int, default=50, help='Number of Warmup Epochs')
     
     # Loss's Hyperparams
+    parser.add_argument(
+      '--loss-fn', type=str, choices=['dice', 'dice_ce'], default='dice_ce', help='Loss function to use'
+    )
     parser.add_argument('--lambda-dice', type=float, default=1., help='Weighted decay for Dice Loss')
     parser.add_argument('--lambda-ce', type=float, default=1., help='Weighted decay for CrossEntropy Loss')
     parser.add_argument(
@@ -143,21 +146,20 @@ def parse_args():
     # Distributed training
     parser.add_argument('--distributed', action='store_false', help='Whether using distributed training')
     parser.add_argument('--dist-backend', type=str, default='nccl', help='distributed backend')
-    parser.add_argument('--dist-url', type=str, default='env://', help='distributed url')
     
     return parser.parse_args()
 
 
-def main_worker(rank: int, args: argparse.Namespace):
+def main(args: argparse.Namespace):
     # init distributed training
     if args.distributed:
-        dist.init_process_group(backend=args.dist_backend, init_method=args.dist_url)
+        dist.init_process_group(backend=args.dist_backend)
+        args.gpu = int(os.environ['LOCAL_RANK'])
+    else:
+        args.gpu = 0
     
-    torch.cuda.set_device(rank)
-    args.device = torch.device(f'cuda:{rank}')
-    
-    if rank == 0:
-        print(args)
+    torch.cuda.set_device(args.gpu)
+    args.device = torch.device(f'cuda:{args.gpu}')
     
     # Define model
     if args.model_name == 'UNETR':
@@ -217,7 +219,7 @@ def main_worker(rank: int, args: argparse.Namespace):
     criterion = criterion.to(args.device)
     
     if args.distributed:
-        model = DDP(model, device_ids=[rank], output_device=rank, find_unused_parameters=True)
+        model = DDP(model, device_ids=[args.gpu], output_device=args.gpu, find_unused_parameters=True)
     
     # Optimization Algorithm
     if args.opt_name == 'sgd':
@@ -246,14 +248,6 @@ def main_worker(rank: int, args: argparse.Namespace):
     print(model, criterion, optimizer, lr_scheduler)
 
 
-def main():
-    args = parse_args()
-    if args.distributed:
-        args.ngpus_per_node = torch.cuda.device_count()
-        mp.spawn(main_worker, args=(args, ), nprocs=args.ngpus_per_node, join=True)
-    else:
-        main_worker(rank=0, args=args)
-
-
 if __name__ == '__main__':
-    main()
+    args = parse_args()
+    main(args)
