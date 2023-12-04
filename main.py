@@ -67,7 +67,7 @@ def parse_args():
       type=Optional[str],
       default=None,
       choices=['tanh', None],
-      help='Post Activation Layer to be applied in classifictaion head in Vision Transformer'
+      help='Post Activation Layer to be applied in classification head in Vision Transformer'
     )
     parser.add_argument('--save-attn', type=bool, default=False, help='Whether to store the attention map')
     
@@ -182,7 +182,7 @@ def main_worker(rank: int, args: argparse.Namespace):
           kernel_size=args.kernel_size,
           stride=args.stride,
           upsample_kernel_size=args.upsample_kernel_size,
-          post_activation=None if not args.classifictaion else args.post_activation,
+          post_activation=None if not args.classification else args.post_activation,
           save_attn=args.save_attn
         )
     else:
