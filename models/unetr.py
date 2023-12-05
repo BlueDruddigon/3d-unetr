@@ -119,7 +119,6 @@ class UNETR(nn.Module):
             skip = encoders[depth]
             if depth == self.depths - 1:
                 x_depth = self.proj_feat(x)
-            print('x_depth', x_depth.shape, skip.shape)
             x_depth = self.decoders[depth](x_depth, skip)
         
         # output proj

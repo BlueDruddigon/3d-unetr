@@ -36,9 +36,9 @@ class DiceLoss(nn.Module):
             inputs = F.softmax(inputs, dim=1)
         
         if num_classes != 1:
-            if targets.shape[1] == 1 or targets.ndim == 4:
-                targets = targets.squeeze(1)
-            targets = F.one_hot(targets.long(), num_classes=num_classes).permute(0, 3, 1, 2)
+            if targets.shape[1] == 1 or targets.ndim == 5:
+                targets.squeeze_(1)
+            targets = F.one_hot(targets.long(), num_classes=num_classes).permute(0, 4, 1, 2, 3)
         
         if not self.include_background:
             assert num_classes != 1, 'single channel prediction, `include_background=False` ignored.'
@@ -100,9 +100,6 @@ class DiceCELoss(nn.Module):
         self.binary_cross_entropy = nn.BCEWithLogitsLoss(reduction=reduction)
     
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
-        """
-
-        """
         if len(inputs.shape) != len(targets.shape):
             raise ValueError(
               "the number of dimensions for input and target should be the same, "

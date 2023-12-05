@@ -51,7 +51,7 @@ def train_one_epoch(
         # set device for inputs and targets
         images, labels = images.to(args.device), labels.to(args.device)
         
-        with torch.autocast(device=args.device, enabled=args.amp):
+        with torch.autocast(args.device, enabled=args.amp):
             logits: torch.Tensor = model(images)
             loss: torch.Tensor = criterion(logits, labels)
         

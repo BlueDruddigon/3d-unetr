@@ -9,8 +9,20 @@ from .transforms import get_default_transforms
 
 def build_dataset(args: argparse.Namespace):
     transforms = get_default_transforms(args)
-    train_set = AbdomenDataset(args.data_root, transform=transforms, is_train=True)
-    valid_set = AbdomenDataset(args.data_root, transform=transforms, is_train=False)
+    train_set = AbdomenDataset(
+      args.data_root,
+      transform=transforms,
+      is_train=True,
+      train_cache_num=args.train_cache_num,
+      num_workers=args.num_workers
+    )
+    valid_set = AbdomenDataset(
+      args.data_root,
+      transform=transforms,
+      is_train=False,
+      valid_cache_num=args.valid_cache_num,
+      num_workers=args.num_workers
+    )
     
     # data sampler and dataloader
     train_sampler = CustomSampler(train_set) if args.distributed else None
