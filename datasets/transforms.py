@@ -14,7 +14,7 @@ def get_default_transforms(args: argparse.Namespace):
       T.Spacingd(
         keys=['image', 'label'], pixdim=(args.space_x, args.space_y, args.space_z), mode=('bilinear', 'nearest')
       ),
-      T.EnsureTyped(keys=['image', 'label'], device=args.device, track_meta=False),
+      T.EnsureTyped(keys=['image', 'label'], track_meta=False),
       T.RandCropByPosNegLabeld(
         keys=['image', 'label'],
         spatial_size=(args.roi_x, args.roi_y, args.roi_z),
@@ -48,7 +48,7 @@ def get_default_transforms(args: argparse.Namespace):
       T.Spacingd(
         keys=['image', 'label'], pixdim=(args.space_x, args.space_y, args.space_z), mode=('bilinear', 'nearest')
       ),
-      T.EnsureTyped(keys=['image', 'label'], device=args.device, track_meta=False),
+      T.EnsureTyped(keys=['image', 'label'], track_meta=False),
       T.ToTensord(keys=['image', 'label']),
     ])
     

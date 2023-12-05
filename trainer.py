@@ -51,7 +51,7 @@ def train_one_epoch(
         # set device for inputs and targets
         images, labels = images.to(args.device), labels.to(args.device)
         
-        with torch.autocast(args.device, enabled=args.amp):
+        with torch.autocast(device_type=args.device.type, enabled=args.amp):
             logits: torch.Tensor = model(images)
             loss: torch.Tensor = criterion(logits, labels)
         
@@ -112,7 +112,7 @@ def validate_epoch(
         
         images, labels = images.to(args.device), labels.to(args.device)
         
-        with torch.autocast(enabled=args.amp, device=args.device):
+        with torch.autocast(device_type=args.device.type, enabled=args.amp):
             logits: torch.Tensor = model(images)
         
         if not logits.is_cuda:  # make both `targets` and `logits` in same device
