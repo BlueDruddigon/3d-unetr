@@ -4,7 +4,19 @@ import numpy as np
 import torch
 import torch.distributed as dist
 
-__all__ = ['dist_all_gather']
+__all__ = ['dist_all_gather', 'setup_for_distributed']
+
+
+def setup_for_distributed(is_master: bool):
+    import builtins as __builtins__
+    builtin_print = __builtins__.print
+    
+    def print(*args, **kwargs):
+        force = kwargs.pop('force', False)
+        if is_master or force:
+            builtin_print(*args, **kwargs)
+    
+    __builtins__.print = print
 
 
 def dist_all_gather(
