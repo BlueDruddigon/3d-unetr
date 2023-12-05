@@ -1,4 +1,5 @@
 import argparse
+import logging
 import os
 from typing import Callable, Optional, Sequence, Tuple, Union
 
@@ -14,6 +15,10 @@ from datasets import build_dataset
 from losses.dice import DiceCELoss, DiceLoss
 from models.unetr import UNETR
 from trainer import run_training
+from utils.dist import setup_for_distributed
+
+# disable warn logging
+logging.disable(logging.WARNING)
 
 
 def parse_args():
@@ -270,6 +275,7 @@ def main(args: argparse.Namespace):
         dist.init_process_group(backend=args.dist_backend)
         args.rank = int(os.environ['LOCAL_RANK'])
         args.world_size = int(os.environ['WORLD_SIZE'])
+        setup_for_distributed(args.rank == 0)
     else:
         args.rank = 0
         args.world_size = 1
