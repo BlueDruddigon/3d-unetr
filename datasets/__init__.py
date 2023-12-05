@@ -14,14 +14,14 @@ def build_dataset(args: argparse.Namespace):
       transform=transforms,
       is_train=True,
       train_cache_num=args.train_cache_num,
-      num_workers=args.num_workers
+      num_workers=args.workers
     )
     valid_set = AbdomenDataset(
       args.data_root,
       transform=transforms,
       is_train=False,
       valid_cache_num=args.valid_cache_num,
-      num_workers=args.num_workers
+      num_workers=args.workers
     )
     
     # data sampler and dataloader
