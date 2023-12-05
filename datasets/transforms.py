@@ -5,15 +5,16 @@ import monai.transforms as T
 
 def get_default_transforms(args: argparse.Namespace):
     train_transforms = T.Compose([
-      T.LoadImaged(keys=['image', 'label'], image_only=True, ensure_channel_first=True),
-      T.ScaleIntensityRanged(
-        keys='image', a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
-      ),
-      T.CropForegroundd(keys=['image', 'label'], allow_smaller=True, source_key='image'),
+      T.LoadImaged(keys=['image', 'label']),
+      T.EnsureChannelFirstd(keys=["image", "label"]),
       T.Orientationd(keys=['image', 'label'], axcodes='RAS'),
       T.Spacingd(
         keys=['image', 'label'], pixdim=(args.space_x, args.space_y, args.space_z), mode=('bilinear', 'nearest')
       ),
+      T.ScaleIntensityRanged(
+        keys='image', a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
+      ),
+      T.CropForegroundd(keys=['image', 'label'], allow_smaller=True, source_key='image'),
       T.EnsureTyped(keys=['image', 'label'], track_meta=False),
       T.RandCropByPosNegLabeld(
         keys=['image', 'label'],
@@ -39,15 +40,16 @@ def get_default_transforms(args: argparse.Namespace):
     ])
     
     valid_transforms = T.Compose([
-      T.LoadImaged(keys=['image', 'label'], image_only=True, ensure_channel_first=True),
-      T.ScaleIntensityRanged(
-        keys='image', a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
-      ),
-      T.CropForegroundd(keys=['image', 'label'], allow_smaller=True, source_key='image'),
+      T.LoadImaged(keys=['image', 'label']),
+      T.EnsureChannelFirstd(keys=["image", "label"]),
       T.Orientationd(keys=['image', 'label'], axcodes='RAS'),
       T.Spacingd(
         keys=['image', 'label'], pixdim=(args.space_x, args.space_y, args.space_z), mode=('bilinear', 'nearest')
       ),
+      T.ScaleIntensityRanged(
+        keys='image', a_min=args.a_min, a_max=args.a_max, b_min=args.b_min, b_max=args.b_max, clip=True
+      ),
+      T.CropForegroundd(keys=['image', 'label'], allow_smaller=True, source_key='image'),
       T.EnsureTyped(keys=['image', 'label'], track_meta=False),
       T.ToTensord(keys=['image', 'label']),
     ])

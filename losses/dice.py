@@ -37,7 +37,7 @@ class DiceLoss(nn.Module):
         
         if num_classes != 1:
             if targets.shape[1] == 1 or targets.ndim == 5:
-                targets.squeeze_(1)
+                targets = targets.squeeze(1)
             targets = F.one_hot(targets.long(), num_classes=num_classes).permute(0, 4, 1, 2, 3)
         
         if not self.include_background:
@@ -116,7 +116,7 @@ class DiceCELoss(nn.Module):
         if inputs.shape[1] != 1 and targets.shape[1] == 1:
             targets = targets.squeeze(1).long()
         elif not torch.is_floating_point(targets):
-            targets = targets.to(dtype=inputs.dtyp)
+            targets = targets.to(dtype=inputs.dtype)
         
         return self.cross_entropy(inputs, targets)
     
