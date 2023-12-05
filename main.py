@@ -27,6 +27,8 @@ def parse_args():
     parser.add_argument('--roi-y', type=int, default=96, help='ROI size in y direction')
     parser.add_argument('--roi-z', type=int, default=96, help='ROI size in z direction')
     parser.add_argument('--workers', type=int, default=4, help='number of workers for DataLoader')
+    parser.add_argument('--train-cache-num', type=int, default=24, help='Number of cached samples in CacheDataset')
+    parser.add_argument('--valid-cache-num', type=int, default=8, help='Number of cached samples in CacheDataset')
     
     # Transform's Hyperparams
     parser.add_argument('--a-min', type=float, default=-175., help='a_min in ScaleIntensityRanged')
