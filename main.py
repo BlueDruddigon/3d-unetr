@@ -1,15 +1,19 @@
 import argparse
 import os
-from typing import Callable, Optional, Sequence, Union
+from typing import Callable, Optional, Sequence, Tuple, Union
 
 import torch
 import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
+from torch.optim.lr_scheduler import LRScheduler
+from torch.utils.tensorboard.writer import SummaryWriter
 
+from datasets import build_dataset
 from losses.dice import DiceCELoss, DiceLoss
 from models.unetr import UNETR
+from trainer import run_training
 
 
 def parse_args():
@@ -140,8 +144,11 @@ def parse_args():
     parser.add_argument('--max-epochs', type=int, default=5000, help='Max number of training epochs')
     parser.add_argument('--batch-size', type=int, default=1, help='Number of batch size')
     parser.add_argument('--resume', type=str, default='', help='Resume from checkpointing')
-    parser.add_argument('--expdir', type=str, default='./runs', help='Experimental Directory')
+    parser.add_argument('--exp-dir', type=str, default='./runs', help='Experimental Directory')
     parser.add_argument('--amp', action='store_false', help='Whether using AMP or not')
+    parser.add_argument('--print-freq', type=int, default=100, help='Print Frequency of tqdm')
+    parser.add_argument('--eval-freq', type=int, default=5, help='Evaluate Frequency')
+    parser.add_argument('--save-freq', type=int, default=5, help='Save checkpoint Frequency')
     
     # Distributed training
     parser.add_argument('--distributed', action='store_false', help='Whether using distributed training')
@@ -150,17 +157,31 @@ def parse_args():
     return parser.parse_args()
 
 
-def main(args: argparse.Namespace):
-    # init distributed training
-    if args.distributed:
-        dist.init_process_group(backend=args.dist_backend)
-        args.gpu = int(os.environ['LOCAL_RANK'])
+def load_checkpoint(
+  args: argparse.Namespace, model: Union[nn.Module, DDP], optimizer: optim.Optimizer,
+  lr_scheduler: Optional[LRScheduler]
+) -> Tuple[argparse.Namespace, Union[nn.Module, DDP], optim.Optimizer, Optional[LRScheduler]]:
+    args.start_epoch = 0
+    if args.resume:
+        ckpt = torch.load(args.resume, map_location=torch.device('cpu'))
+        if args.distributed:  # DDP
+            model.module.load_state_dict(ckpt['state_dict'])
+        else:  # nn.Module
+            model.load_state_dict(ckpt['state_dict'])
+        if optimizer is not None and 'optimizer' in ckpt.keys():
+            optimizer.load_state_dict(ckpt['optimizer'])
+        if lr_scheduler is not None and 'lr_scheduler' in ckpt.keys():
+            lr_scheduler.load_state_dict(ckpt['lr_scheduler'])
+        args.start_epoch = ckpt['epoch'] + 1
     else:
-        args.gpu = 0
+        print('Training from scratch.')
     
-    torch.cuda.set_device(args.gpu)
-    args.device = torch.device(f'cuda:{args.gpu}')
-    
+    return args, model, optimizer, lr_scheduler
+
+
+def initialize_algorithm(
+  args: argparse.Namespace
+) -> Tuple[argparse.Namespace, nn.Module, nn.Module, optim.Optimizer, Optional[LRScheduler]]:
     # Define model
     if args.model_name == 'UNETR':
         model = UNETR(
@@ -214,13 +235,6 @@ def main(args: argparse.Namespace):
     else:
         raise ValueError
     
-    # move to CUDA
-    model = model.to(args.device)
-    criterion = criterion.to(args.device)
-    
-    if args.distributed:
-        model = DDP(model, device_ids=[args.gpu], output_device=args.gpu, find_unused_parameters=True)
-    
     # Optimization Algorithm
     if args.opt_name == 'sgd':
         optimizer = optim.SGD(
@@ -243,9 +257,66 @@ def main(args: argparse.Namespace):
     elif args.lr_scheduler == 'cosine_anneal':
         lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.max_epochs)
     else:
-        raise ValueError
+        lr_scheduler = None
     
-    print(model, criterion, optimizer, lr_scheduler)
+    return args, model, criterion, optimizer, lr_scheduler
+
+
+def main(args: argparse.Namespace):
+    # init distributed training
+    if args.distributed:
+        dist.init_process_group(backend=args.dist_backend)
+        args.rank = int(os.environ['LOCAL_RANK'])
+        args.world_size = int(os.environ['WORLD_SIZE'])
+    else:
+        args.rank = 0
+        args.world_size = 1
+    
+    # prepare device with current rank
+    torch.cuda.set_device(args.rank)
+    args.device = torch.device(f'cuda:{args.rank}')
+    
+    # init model, loss_fn, optimizer, lr_scheduler
+    args, model, criterion, optimizer, lr_scheduler = initialize_algorithm(args)
+    
+    # move to CUDA
+    model = model.to(args.device)
+    criterion = criterion.to(args.device)
+    
+    # wrap model with DDP if distributed training is available
+    if args.distributed:
+        model = DDP(model, device_ids=[args.rank], output_device=args.rank, find_unused_parameters=True)
+    
+    # load from checkpointing if available
+    args, model, optimizer, lr_scheduler = load_checkpoint(args, model, optimizer, lr_scheduler)
+    
+    # weights and logs
+    args.exp_dir = os.path.join(args.exp_dir, args.model_name)
+    args.save_dir = os.path.join(args.exp_dir, 'weights')
+    args.log_dir = os.path.join(args.exp_dir, 'logs')
+    
+    os.makedirs(args.exp_dir, exist_ok=True)
+    os.makedirs(args.save_dir, exist_ok=True)
+    os.makedirs(args.log_dir, exist_ok=True)
+    
+    # Tensorboard logger
+    writer = SummaryWriter(args.log_dir)
+    
+    # get loader from dataset and arguments
+    train_loader, valid_loader = build_dataset(args)
+    
+    # training process
+    acc = run_training(
+      model,
+      criterion,
+      optimizer,
+      train_loader=train_loader,
+      valid_loader=valid_loader,
+      args=args,
+      scheduler=lr_scheduler,
+      writer=writer,
+    )
+    return acc
 
 
 if __name__ == '__main__':
