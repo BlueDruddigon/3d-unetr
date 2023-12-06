@@ -6,6 +6,7 @@ from typing import Optional, Union
 import numpy as np
 import torch
 import torch.nn as nn
+import torch.nn.functional as F
 import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import LRScheduler
@@ -76,3 +77,37 @@ class AverageMeter:
         self.sum += value * n
         self.count += n
         self.avg = np.where(self.count > 0, self.sum / self.count, self.sum)
+
+
+class PostProcessing:
+    def __init__(
+      self,
+      argmax: bool = False,
+      to_onehot: Optional[int] = None,
+      threshold: Optional[float] = None,
+      round: Optional[bool] = None
+    ) -> None:
+        super().__init__()
+        
+        self.argmax = argmax
+        
+        if isinstance(to_onehot, bool):
+            raise ValueError('`to_onehot=True/False` is deprecated, please use `to_onehot=num_classes` instead.')
+        self.to_onehot = to_onehot
+        self.threshold = threshold
+        self.round = round
+    
+    def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
+        if self.argmax:
+            inputs = inputs.argmax(dim=0, keepdim=True)
+        
+        if self.to_onehot is not None:
+            inputs = F.one_hot(inputs, num_classes=self.to_onehot, dim=0, dtype=inputs.dtype)
+        
+        if self.threshold is not None:
+            inputs = inputs >= self.threshold
+        
+        if self.round is not None:
+            inputs = torch.round(inputs)
+        
+        return inputs
