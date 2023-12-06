@@ -127,7 +127,7 @@ def validate_epoch(
         valid_outputs_list = torch.unbind(logits)
         valid_outputs_convert = [post_pred(valid_output_tensor) for valid_output_tensor in valid_outputs_list]
         
-        acc = acc_func(y_pred=valid_outputs_convert, y=valid_labels_convert)
+        acc = acc_func(preds=valid_outputs_convert, targets=valid_labels_convert)
         acc = acc.to(args.device)
         
         if args.distributed:
@@ -220,7 +220,8 @@ def run_training(
             
             if callbacks is not None and callbacks.step(valid_avg_acc):  # check if the training must early stop
                 print(
-                  f'Early Stopping at epoch {epoch}, current valid_acc: {valid_avg_acc}, best_valid_acc: {best_valid_acc}'
+                  f'Early Stopping at epoch {epoch}, '
+                  f'current valid_acc: {valid_avg_acc}, best_valid_acc: {best_valid_acc}'
                 )
                 save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
             

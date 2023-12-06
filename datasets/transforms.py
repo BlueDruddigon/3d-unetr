@@ -51,6 +51,9 @@ def get_default_transforms(args: argparse.Namespace):
       ),
       T.CropForegroundd(keys=['image', 'label'], allow_smaller=True, source_key='image'),
       T.EnsureTyped(keys=['image', 'label'], track_meta=False),
+      T.ResizeWithPadOrCropd(
+        keys=['image', 'label'], spatial_size=(args.roi_x, args.roi_y, args.roi_z), mode='constant'
+      ),
       T.ToTensord(keys=['image', 'label']),
     ])
     

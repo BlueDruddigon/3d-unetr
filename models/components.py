@@ -1,6 +1,7 @@
 from collections.abc import Callable
 from typing import Optional, Sequence, Union
 
+import numpy as np
 import torch
 import torch.nn as nn
 from timm.models.layers import DropPath, trunc_normal_
@@ -119,14 +120,10 @@ class PatchEmbed(nn.Module):
     ) -> None:
         super().__init__()
         
-        self.patches_resolution = (
-          img_size[0] // patch_size[0], img_size[1] // patch_size[1], img_size[2] // patch_size[2]
-        )
-        num_patches = (img_size[0] // patch_size[0]) * (img_size[1] // patch_size[1]) * (img_size[2] // patch_size[2])
-        
         self.img_size = img_size
         self.patch_size = patch_size
-        self.num_patches = num_patches
+        self.patches_resolution = tuple([i // p for i, p in zip(self.img_size, self.patch_size)])
+        self.num_patches = np.prod([i // p for i, p in zip(self.img_size, self.patch_size)])
         
         # embeddings
         self.proj = nn.Conv3d(in_channels, embed_dim, kernel_size=patch_size, stride=patch_size)

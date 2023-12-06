@@ -115,7 +115,7 @@ class PostProcessing:
             inputs = inputs.argmax(dim=0, keepdim=True)
         
         if self.to_onehot is not None:
-            inputs = F.one_hot(inputs, num_classes=self.to_onehot, dim=0, dtype=inputs.dtype)
+            inputs = F.one_hot(inputs.long(), num_classes=self.to_onehot).permute(0, 4, 1, 2, 3).squeeze(0)
         
         if self.threshold is not None:
             inputs = inputs >= self.threshold

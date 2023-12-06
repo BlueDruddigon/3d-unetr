@@ -1,6 +1,7 @@
 from typing import List, Optional, Union
 
 import torch
+from monai.data.meta_tensor import MetaTensor
 
 
 class DiceMetric:
@@ -49,21 +50,17 @@ class DiceMetric:
         :param y_true (List[torch.Tensor]): List of ground-truth tensors
         :return: Value of Dice Metric with reduction
         """
-        ret = torch.stack([
+        ret = [
           self._compute_tensor(
             p.detach().unsqueeze(0),
             g.detach().unsqueeze(0),
           ) for p, g in zip(y_pred, y_true)
-        ])
+        ]
         
-        if self.reduction == 'mean':
-            return ret.mean().detach().cpu()
-        elif self.reduction == 'sum':
-            return ret.sum().detach().cpu()
-        elif self.reduction is None:
-            return ret.detach().cpu()
-        else:
-            raise ValueError
+        if isinstance(ret[0], (torch.Tensor, MetaTensor)):
+            return torch.cat(ret)
+        
+        return ret
     
     def _compute_tensor(self, y_pred: torch.Tensor, y_true: torch.Tensor):
         """Computes metric if inputs are torch.Tensor

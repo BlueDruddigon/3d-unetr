@@ -158,6 +158,7 @@ def parse_args():
     parser.add_argument('--print-freq', type=int, default=100, help='Print Frequency of tqdm')
     parser.add_argument('--eval-freq', type=int, default=5, help='Evaluate Frequency')
     parser.add_argument('--save-freq', type=int, default=5, help='Save checkpoint Frequency')
+    parser.add_argument('--patience', type=int, default=5, help='Early Stopping Patience')
     
     # Distributed training
     parser.add_argument('--distributed', action='store_false', help='Whether using distributed training')
