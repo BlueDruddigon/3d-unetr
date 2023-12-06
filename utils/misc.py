@@ -11,7 +11,7 @@ import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
 from torch.optim.lr_scheduler import LRScheduler
 
-__all__ = ['seed_everthing', 'save_checkpoint', 'AverageMeter']
+__all__ = ['seed_everthing', 'save_checkpoint', 'AverageMeter', 'PostProcessing']
 
 
 def save_checkpoint(
@@ -63,6 +63,7 @@ class AverageMeter:
         self.reset()
     
     def reset(self) -> None:
+        """ Initial state """
         self.val = 0
         self.avg = 0
         self.sum = 0
@@ -87,6 +88,14 @@ class PostProcessing:
       threshold: Optional[float] = None,
       round: Optional[bool] = None
     ) -> None:
+        """Post-Processing Wrapper
+
+        :param argmax (bool): Whether applying `argmax` or not
+        :param to_onehot (int | None): If not None, apply One-hot Encoding to the inputs with num_classes=to_onehot.
+        :param threshold (float | None): If not None, apply thresholding the inputs with threshold value
+        :param round (bool | None): If not None, apply `torch.round`.
+        :raises ValueError: to_onehot=True/False is deprecated
+        """
         super().__init__()
         
         self.argmax = argmax
@@ -98,6 +107,10 @@ class PostProcessing:
         self.round = round
     
     def __call__(self, inputs: torch.Tensor) -> torch.Tensor:
+        """
+        :param inputs: the inputs tensor to be transformed
+        :return: transformed version of inputs tensor
+        """
         if self.argmax:
             inputs = inputs.argmax(dim=0, keepdim=True)
         

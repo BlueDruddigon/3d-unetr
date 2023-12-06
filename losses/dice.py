@@ -17,6 +17,15 @@ class DiceLoss(nn.Module):
       squared_pred: bool = False,
       smooth: float = 1e-7,
     ) -> None:
+        """The Combination of DiceLoss and CrossEntropyLoss
+
+        :param include_background (bool): Whether consider background as the first class. Default: True.
+        :param sigmoid (bool): Whether apply sigmoid function. Default: False.
+        :param softmax (bool): Whether applying softmax function. Default: True.
+        :param reduction (str): The reduction method. Default: 'mean'
+        :param squared_pred (bool): Whether using squared prediction at the denominator. Default: True.
+        :param smooth (float): Smooth value to avoid divided by zero. Default: 1e-5.
+        """
         super(DiceLoss, self).__init__()
         
         self.sigmoid = sigmoid
@@ -27,6 +36,12 @@ class DiceLoss(nn.Module):
         self.include_background = include_background
     
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """Compute the loss from dice coefficient.
+
+        :param inputs (torch.Tensor): The prediction tensor
+        :param targets (torch.Tensor): The ground-truth tensor
+        :return: The loss value.
+        """
         if self.sigmoid:
             inputs = F.sigmoid(inputs)
         
@@ -79,6 +94,17 @@ class DiceCELoss(nn.Module):
       lambda_dice: float = 1.,
       lambda_ce: float = 1.
     ) -> None:
+        """The Combination of DiceLoss and CrossEntropyLoss
+
+        :param include_background (bool): Whether consider background as the first class. Default: True.
+        :param sigmoid (bool): Whether apply sigmoid function. Default: False.
+        :param softmax (bool): Whether applying softmax function. Default: True.
+        :param squared_pred (bool): Whether using squared prediction at the denominator. Default: True.
+        :param reduction (str): The reduction method. Default: 'mean'
+        :param smooth (float): Smooth value to avoid divided by zero. Default: 1e-5.
+        :param lambda_dice (float): Weighted value for DiceLoss. Default: 1.
+        :param lambda_ce (float): Weighted value for CrossEntropyLoss. Default: 1.
+        """
         super().__init__()
         
         self.lambda_ce = lambda_ce
@@ -100,6 +126,12 @@ class DiceCELoss(nn.Module):
         self.binary_cross_entropy = nn.BCEWithLogitsLoss(reduction=reduction)
     
     def forward(self, inputs: torch.Tensor, targets: torch.Tensor) -> torch.Tensor:
+        """Compute the combination weighted losses.
+
+        :param inputs (torch.Tensor): The prediction tensor
+        :param targets (torch.Tensor): The ground-truth tensor
+        :return: The total loss value.
+        """
         if len(inputs.shape) != len(targets.shape):
             raise ValueError(
               "the number of dimensions for input and target should be the same, "

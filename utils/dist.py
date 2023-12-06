@@ -8,6 +8,10 @@ __all__ = ['dist_all_gather', 'setup_for_distributed']
 
 
 def setup_for_distributed(is_master: bool):
+    """Setup print function at master process
+    
+    :param is_master (bool): Whether is master process or not.
+    """
     import builtins as __builtins__
     builtin_print = __builtins__.print
     

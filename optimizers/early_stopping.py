@@ -9,6 +9,14 @@ class EarlyStopping:
     mode_dict = {'min': torch.lt, 'max': torch.gt}
     
     def __init__(self, patience: int = 5, mode: str = 'min', min_delta: float = 1e-5) -> None:
+        """Early Stopping Callback
+
+        :param patience (int): Number of checks with no improvement.
+        :param mode (str): One of 'min', 'max'.
+            In 'min' mode, training will stop when the quantity monitored has stopped decreasing.
+            And in 'max' mode, it will stop when the quantity monitored has stopped increasing.
+        :param min_delta: A minimum value for changes in the monitored quantity to qualify as an improvement.
+        """
         super().__init__()
         
         self.patience = patience
@@ -23,9 +31,15 @@ class EarlyStopping:
     
     @property
     def monitor_op(self) -> Callable:
+        """Return monitor operation from mode"""
         return self.mode_dict[self.mode]
     
     def step(self, metric: torch.Tensor) -> bool:
+        """Monitor the quantity
+
+        :param metric (torch.Tensor): the monitored quantity metric value.
+        :return: A boolean flag that provide information if the training needs early stopped
+        """
         if not isinstance(metric, torch.Tensor):
             metric = torch.tensor(metric)
         if self.monitor_op(metric, self.best_score):
