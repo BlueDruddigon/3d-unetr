@@ -5,9 +5,7 @@ from typing import Optional, Union
 import numpy as np
 import torch
 import torch.distributed as dist
-from monai.data import DataLoader, decollate_batch
-from monai.metrics import DiceMetric
-from monai.transforms import AsDiscrete
+from monai.data import DataLoader
 from torch import nn as nn
 from torch import optim as optim
 from torch.cuda.amp import GradScaler
@@ -16,8 +14,9 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
+from metrics.dice import DiceMetric
 from utils.dist import dist_all_gather
-from utils.misc import AverageMeter, save_checkpoint
+from utils.misc import AverageMeter, PostProcessing, save_checkpoint
 
 
 def train_one_epoch(
@@ -93,12 +92,15 @@ def validate_epoch(
   epoch: int,
   acc_func: nn.Module,
   args: argparse.Namespace,
-  post_label=None,
-  post_pred=None,
+  post_label: Optional[PostProcessing] = None,
+  post_pred: Optional[PostProcessing] = None,
 ) -> float:
     # set evaluate mode for model and loss_fn
     model.eval()
     criterion.eval()
+    
+    assert post_pred is not None
+    assert post_label is not None
     
     # status bar
     args.print_freq = len(loader) // 10
@@ -119,11 +121,9 @@ def validate_epoch(
         if not logits.is_cuda:  # make both `targets` and `logits` in same device
             labels = labels.cpu()
         
-        valid_labels_list = decollate_batch(labels)
-        assert post_label is not None
+        valid_labels_list = torch.unbind(labels)
         valid_labels_convert = [post_label(valid_label_tensor) for valid_label_tensor in valid_labels_list]
-        valid_outputs_list = decollate_batch(logits)
-        assert post_pred is not None
+        valid_outputs_list = torch.unbind(logits)
         valid_outputs_convert = [post_pred(valid_output_tensor) for valid_output_tensor in valid_outputs_list]
         
         acc = acc_func(y_pred=valid_outputs_convert, y=valid_labels_convert)
@@ -160,11 +160,11 @@ def run_training(
         scaler = GradScaler()
     
     # discrete post-processing
-    post_label = AsDiscrete(to_onehot=args.num_classes)
-    post_pred = AsDiscrete(argmax=True, to_onehot=args.num_classes)
+    post_label = PostProcessing(to_onehot=args.num_classes)
+    post_pred = PostProcessing(argmax=True, to_onehot=args.num_classes)
     
     # Accuracy Metrics
-    acc_func = DiceMetric(include_background=True, reduction='mean', get_not_nans=True)
+    acc_func = DiceMetric(include_background=True, reduction='mean')
     
     # training
     best_valid_acc = 0.
