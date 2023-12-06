@@ -16,7 +16,8 @@ from torch.optim.lr_scheduler import LRScheduler
 from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
-from utils import AverageMeter, dist_all_gather, save_checkpoint
+from utils.dist import dist_all_gather
+from utils.misc import AverageMeter, save_checkpoint
 
 
 def train_one_epoch(
