@@ -330,7 +330,7 @@ def main(args: argparse.Namespace):
       args=args,
       scheduler=lr_scheduler,
       writer=writer,
-      callback=early_stop_callback
+      callbacks=early_stop_callback
     )
     return acc
 
