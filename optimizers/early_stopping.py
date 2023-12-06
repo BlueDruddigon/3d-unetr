@@ -20,7 +20,7 @@ class EarlyStopping:
         super().__init__()
         
         self.patience = patience
-        self.min_delta = min_delta
+        self.min_delta = torch.tensor(min_delta) if not isinstance(min_delta, torch.Tensor) else min_delta
         self.counter = 0
         
         self.mode = mode
