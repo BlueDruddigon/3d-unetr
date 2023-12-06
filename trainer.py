@@ -139,7 +139,7 @@ def validate_epoch(
         
         if args.rank == 0:
             # update pbar's status
-            s = f'Epoch [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}], Accuracy: {avg_acc:.4f}'
+            s = f'Validation [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}], Accuracy: {avg_acc:.4f}'
             pbar.set_description(s)
     
     return avg_acc
