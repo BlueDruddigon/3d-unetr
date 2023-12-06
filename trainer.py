@@ -197,7 +197,7 @@ def run_training(
               post_label=post_label
             )
             
-            print(f'Final Validation Acc: {valid_avg_acc}')
+            print(f'Final Validation Acc: {valid_avg_acc:.6f}')
             if writer is not None:  # tensorboard logs if available
                 writer.add_scalar('valid_acc', valid_avg_acc, epoch)
             
