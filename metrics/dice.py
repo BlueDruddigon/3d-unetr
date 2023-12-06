@@ -1,7 +1,8 @@
 from typing import List, Optional, Union
 
 import torch
-from monai.data.meta_tensor import MetaTensor
+
+from .utils import run_metric_reduction
 
 
 class DiceMetric:
@@ -14,6 +15,7 @@ class DiceMetric:
       softmax: Optional[bool] = None,
       reduction: str = 'mean',
       num_classes: Optional[int] = None,
+      get_not_nans: bool = False
     ) -> None:
         """Class to compute Dice Metric
 
@@ -22,6 +24,7 @@ class DiceMetric:
         :param softmax (bool | None): Whether applying softmax function. Default: None.
         :param num_classes (int | None): The number of classes. Default: None.
         :param reduction (str | None): The reduction method. Default: 'mean'.
+        :param get_not_nans (bool): Whether to return the number of not-nan values. Default: False.
         """
         super().__init__()
         
@@ -31,6 +34,7 @@ class DiceMetric:
         self.num_classes = num_classes
         assert reduction in self.reductions, NotImplementedError
         self.reduction = reduction
+        self.get_not_nans = get_not_nans
     
     def _compute_dice_score(self, y_pred: torch.Tensor, y_true: torch.Tensor) -> torch.Tensor:
         """Compute Dice score from prediction and ground-truth
@@ -57,7 +61,7 @@ class DiceMetric:
           ) for p, g in zip(y_pred, y_true)
         ]
         
-        if isinstance(ret[0], (torch.Tensor, MetaTensor)):
+        if isinstance(ret[0], torch.Tensor):
             return torch.cat(ret)
         
         return ret
@@ -86,14 +90,10 @@ class DiceMetric:
             data.append(torch.stack(c_list))
         
         data = torch.stack(data, dim=0).contiguous()
-        if self.reduction == 'mean':
-            return data.mean().detach().cpu()
-        elif self.reduction == 'sum':
-            return data.sum().detach().cpu()
-        elif self.reduction is None:
-            return data.detach().cpu()
-        else:
-            raise ValueError
+        
+        # do the reduction
+        t, not_nans = run_metric_reduction(data, self.reduction)
+        return (t, not_nans) if self.get_not_nans else t
     
     def __call__(
       self, preds: Union[torch.Tensor, List[torch.Tensor]], targets: Union[torch.Tensor, List[torch.Tensor]]
