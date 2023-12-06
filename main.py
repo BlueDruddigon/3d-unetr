@@ -8,12 +8,14 @@ import torch.distributed as dist
 import torch.nn as nn
 import torch.optim as optim
 from torch.nn.parallel import DistributedDataParallel as DDP
-from torch.optim.lr_scheduler import LRScheduler
+from torch.optim.lr_scheduler import CosineAnnealingLR, LRScheduler
 from torch.utils.tensorboard.writer import SummaryWriter
 
 from datasets import build_dataset
 from losses.dice import DiceCELoss, DiceLoss
 from models.unetr import UNETR
+from optimizers.early_stopping import EarlyStopping
+from optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
 from trainer import run_training
 from utils.dist import setup_for_distributed
 
@@ -188,7 +190,7 @@ def load_checkpoint(
 
 def initialize_algorithm(
   args: argparse.Namespace
-) -> Tuple[argparse.Namespace, nn.Module, nn.Module, optim.Optimizer, Optional[LRScheduler]]:
+) -> Tuple[argparse.Namespace, nn.Module, nn.Module, optim.Optimizer, Optional[LRScheduler], EarlyStopping]:
     # Define model
     if args.model_name == 'UNETR':
         model = UNETR(
@@ -260,13 +262,17 @@ def initialize_algorithm(
     
     # Learning rate scheduler
     if args.lr_scheduler == 'warmup_cosine':
-        lr_scheduler = None
+        lr_scheduler = LinearWarmupCosineAnnealingLR(
+          optimizer, warmup_epochs=args.warmup_epochs, max_epochs=args.max_epochs
+        )
     elif args.lr_scheduler == 'cosine_anneal':
-        lr_scheduler = optim.lr_scheduler.CosineAnnealingLR(optimizer, T_max=args.max_epochs)
+        lr_scheduler = CosineAnnealingLR(optimizer, T_max=args.max_epochs)
     else:
         lr_scheduler = None
     
-    return args, model, criterion, optimizer, lr_scheduler
+    early_stop_callback = EarlyStopping(mode='min', patience=args.patience)
+    
+    return args, model, criterion, optimizer, lr_scheduler, early_stop_callback
 
 
 def main(args: argparse.Namespace):
@@ -285,7 +291,7 @@ def main(args: argparse.Namespace):
     args.device = torch.device(f'cuda:{args.rank}')
     
     # init model, loss_fn, optimizer, lr_scheduler
-    args, model, criterion, optimizer, lr_scheduler = initialize_algorithm(args)
+    args, model, criterion, optimizer, lr_scheduler, early_stop_callback = initialize_algorithm(args)
     
     # move to CUDA
     model = model.to(args.device)
@@ -323,6 +329,7 @@ def main(args: argparse.Namespace):
       args=args,
       scheduler=lr_scheduler,
       writer=writer,
+      callback=early_stop_callback
     )
     return acc
 

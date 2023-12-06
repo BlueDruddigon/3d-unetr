@@ -15,6 +15,7 @@ from torch.utils.tensorboard.writer import SummaryWriter
 from tqdm import tqdm
 
 from metrics.dice import DiceMetric
+from optimizers.early_stopping import EarlyStopping
 from utils.dist import dist_all_gather
 from utils.misc import AverageMeter, PostProcessing, save_checkpoint
 
@@ -153,6 +154,7 @@ def run_training(
   valid_loader: DataLoader,
   args: argparse.Namespace,
   scheduler: Optional[LRScheduler] = None,
+  callbacks: Optional[EarlyStopping] = None,
   writer: Optional[SummaryWriter] = None,
 ):
     scaler = None
@@ -181,8 +183,10 @@ def run_training(
         
         # Validation
         if (epoch+1) % args.eval_freq == 0:
-            if args.distributed:  # wait to
+            if args.distributed:  # wait for synchronization
                 dist.barrier()
+            
+            # compute the validation metric
             valid_avg_acc = validate_epoch(
               model,
               criterion,
@@ -194,29 +198,34 @@ def run_training(
               post_label=post_label
             )
             
-            if args.rank == 0:  # master process
-                print(f'Final Validation Acc: {valid_avg_acc}')
-                if writer is not None:  # tensorboard logs if available
-                    writer.add_scalar('valid_acc', valid_avg_acc, epoch)
+            print(f'Final Validation Acc: {valid_avg_acc}')
+            if writer is not None:  # tensorboard logs if available
+                writer.add_scalar('valid_acc', valid_avg_acc, epoch)
+            
+            # check current `best_valid_acc` for improvement
+            if valid_avg_acc > best_valid_acc:
+                print(f'New best_valid_acc: ({best_valid_acc:.6f} -> {valid_avg_acc:.6f})')
+                best_valid_acc = valid_avg_acc
                 
-                # check current `best_valid_acc`
-                if valid_avg_acc > best_valid_acc:
-                    print(f'New best_valid_acc: ({best_valid_acc:.6f} -> {valid_avg_acc:.6f})')
-                    best_valid_acc = valid_avg_acc
-                    
-                    # save checkpoint when best_valid_acc is updated
-                    save_checkpoint(
-                      model,
-                      epoch,
-                      args,
-                      filename='model_best.pt',
-                      best_acc=best_valid_acc,
-                      optimizer=optimizer,
-                      scheduler=scheduler
-                    )
-        
-        if (epoch+1) % args.save_freq == 0:  # save checkpoint frequently
-            save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
+                # save checkpoint when best_valid_acc is updated
+                save_checkpoint(
+                  model,
+                  epoch,
+                  args,
+                  filename='model_best.pt',
+                  best_acc=best_valid_acc,
+                  optimizer=optimizer,
+                  scheduler=scheduler
+                )
+            
+            if callbacks is not None and callbacks.step(valid_avg_acc):  # check if the training must early stop
+                print(
+                  f'Early Stopping at epoch {epoch}, current valid_acc: {valid_avg_acc}, best_valid_acc: {best_valid_acc}'
+                )
+                save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
+            
+            if (epoch+1) % args.save_freq == 0:  # save checkpoint frequently
+                save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
         
         if scheduler is not None:  # Update LRScheduler's state if available
             scheduler.step()
