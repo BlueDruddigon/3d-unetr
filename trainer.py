@@ -210,9 +210,11 @@ def run_training(
                 writer.add_scalar('valid_acc', valid_avg_acc, epoch)
             
             # check current `best_valid_acc` for improvement
+            update_best_valid = False  # the flag to know if the weight's saved when update `best_valid_acc`
             if valid_avg_acc > best_valid_acc:
                 print(f'New best_valid_acc: ({best_valid_acc:.6f} -> {valid_avg_acc:.6f})')
                 best_valid_acc = valid_avg_acc
+                update_best_valid = True
                 
                 # save checkpoint when best_valid_acc is updated
                 save_checkpoint(
@@ -233,7 +235,7 @@ def run_training(
                 save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
                 break
             
-            if (epoch+1) % args.save_freq == 0:  # save checkpoint frequently
+            if (epoch+1) % args.save_freq == 0 and not update_best_valid:  # save checkpoint frequently
                 save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
         
         if scheduler is not None:  # Update LRScheduler's state if available
