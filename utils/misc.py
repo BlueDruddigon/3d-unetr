@@ -43,9 +43,10 @@ def save_checkpoint(
     if scheduler is not None:
         save_dict['scheduler'] = scheduler.state_dict()
     if not filename:
-        filename = os.path.join(args.save_dir, f'weights-{epoch}-{best_acc:.2f}.pth')
-    torch.save(save_dict, filename)
-    print('Saved checkpoint', filename)
+        filename = f'weights-{epoch}-{best_acc:.2f}.pth'
+    filepath = os.path.join(args.save_dir, filename)
+    torch.save(save_dict, filepath)
+    print('Saved checkpoint', filepath)
 
 
 def seed_everthing(seed: int) -> None:
