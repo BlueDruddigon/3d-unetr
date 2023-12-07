@@ -37,7 +37,7 @@ class EarlyStopping:
     def step(self, metric: torch.Tensor) -> bool:
         """Monitor the quantity
 
-        :param metric (torch.Tensor): the monitored quantity metric value.
+        :param metric (torch.Tensor | float): the monitored quantity metric value.
         :return: A boolean flag that provide information if the training needs early stopped
         """
         if not isinstance(metric, torch.Tensor):

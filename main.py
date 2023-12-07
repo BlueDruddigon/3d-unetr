@@ -271,7 +271,7 @@ def initialize_algorithm(
     else:
         lr_scheduler = None
     
-    early_stop_callback = EarlyStopping(mode='min', patience=args.patience)
+    early_stop_callback = EarlyStopping(mode='max', patience=args.patience)
     
     return args, model, criterion, optimizer, lr_scheduler, early_stop_callback
 

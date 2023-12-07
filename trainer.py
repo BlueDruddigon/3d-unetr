@@ -220,7 +220,7 @@ def run_training(
             if callbacks is not None and callbacks.step(valid_avg_acc):  # check if the training must early stop
                 print(
                   f'Early Stopping at epoch {epoch}, '
-                  f'current valid_acc: {valid_avg_acc}, best_valid_acc: {best_valid_acc}'
+                  f'current valid_acc: {valid_avg_acc:.4f}, best_valid_acc: {best_valid_acc:.4f}'
                 )
                 save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
             
