@@ -76,11 +76,12 @@ def train_one_epoch(
         batch_timer.update(time.time() - end)
         end = time.time()
         
-        # update pbar's status
-        s = f'Epoch [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}] ' \
-            f'Time/b: {batch_timer.val:.2f}s ({batch_timer.avg:.2f}s) ' \
-            f'Loss/b: {run_loss.val:.4f} ({run_loss.avg:.4f})'
-        pbar.set_description(s)
+        if args.rank == 0:
+            # update pbar's status on master process
+            s = f'Epoch [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}] ' \
+                f'Time/b: {batch_timer.val:.2f}s ({batch_timer.avg:.2f}s) ' \
+                f'Loss/b: {run_loss.val:.4f} ({run_loss.avg:.4f})'
+            pbar.set_description(s)
     
     return run_loss.avg
 
@@ -144,7 +145,7 @@ def validate_epoch(
         end = time.time()
         
         if args.rank == 0:
-            # update pbar's status
+            # update pbar's status on master process
             s = f'Validation [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}] ' \
                 f'Time/b: {batch_timer.val:.2f}s ({batch_timer.avg:.2f}s) ' \
                 f'Accuracy/b: {valid_acc.val:.4f} ({valid_acc.avg:.4f})'
