@@ -158,6 +158,7 @@ def parse_args():
     parser.add_argument('--print-freq', type=int, default=100, help='Print Frequency of tqdm')
     parser.add_argument('--eval-freq', type=int, default=5, help='Evaluate Frequency')
     parser.add_argument('--save-freq', type=int, default=5, help='Save checkpoint Frequency')
+    parser.add_argument('--early-stop', type=bool, default=False, help='Whether using Early Stopping')
     parser.add_argument('--patience', type=int, default=5, help='Early Stopping Patience')
     
     # Distributed training
@@ -191,7 +192,7 @@ def load_checkpoint(
 
 def initialize_algorithm(
   args: argparse.Namespace
-) -> Tuple[argparse.Namespace, nn.Module, nn.Module, optim.Optimizer, Optional[LRScheduler], EarlyStopping]:
+) -> Tuple[argparse.Namespace, nn.Module, nn.Module, optim.Optimizer, Optional[LRScheduler], Optional[EarlyStopping]]:
     # Define model
     if args.model_name == 'UNETR':
         model = UNETR(
@@ -271,7 +272,10 @@ def initialize_algorithm(
     else:
         lr_scheduler = None
     
-    early_stop_callback = EarlyStopping(mode='max', patience=args.patience)
+    if args.early_stop:
+        early_stop_callback = EarlyStopping(mode='max', patience=args.patience)
+    else:
+        early_stop_callback = None
     
     return args, model, criterion, optimizer, lr_scheduler, early_stop_callback
 
