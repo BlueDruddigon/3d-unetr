@@ -66,7 +66,7 @@ def train_one_epoch(
             loss.backward()
             optimizer.step()
         
-        # update metric logger
+        # gather loss values and update metric logger
         if args.distributed:
             loss_list = dist_all_gather([loss], out_numpy=True, is_valid=idx < loader.sampler.valid_length)
             n_samples = args.batch_size * args.world_size
@@ -107,6 +107,10 @@ def validate_epoch(
     args.print_freq = len(loader) // 10
     pbar = tqdm(enumerate(loader), total=len(loader), miniters=args.print_freq)
     
+    valid_acc = AverageMeter()
+    batch_timer = AverageMeter()
+    
+    end = time.time()
     for idx, batch_data in pbar:
         # decode the loader's data
         if isinstance(batch_data, list):
@@ -122,27 +126,31 @@ def validate_epoch(
         if not logits.is_cuda:  # make both `targets` and `logits` in same device
             labels = labels.cpu()
         
-        valid_labels_list = torch.unbind(labels)
-        valid_labels_convert = [post_label(valid_label_tensor) for valid_label_tensor in valid_labels_list]
-        valid_outputs_list = torch.unbind(logits)
-        valid_outputs_convert = [post_pred(valid_output_tensor) for valid_output_tensor in valid_outputs_list]
+        post_labels = [post_label(tensor) for tensor in torch.unbind(labels)]
+        post_outputs = [post_pred(tensor) for tensor in torch.unbind(logits)]
         
-        acc = acc_func(preds=valid_outputs_convert, targets=valid_labels_convert)
+        acc = acc_func(preds=post_outputs, targets=post_labels)
         acc = acc.to(args.device)
         
+        # gather valid metrics and update metric loggers
         if args.distributed:
             acc_list = dist_all_gather([acc], out_numpy=True, is_valid=idx < loader.sampler.valid_length)
-            avg_acc = np.mean([np.nanmean(l) for l in acc_list])
+            n_samples = args.batch_size * args.world_size
+            valid_acc.update(np.mean([np.nanmean(l) for l in acc_list]), n=n_samples)
         else:
             acc_list = acc.detach().cpu().numpy()
-            avg_acc = np.mean([np.nanmean(l) for l in acc_list])
+            valid_acc.update(np.mean([np.nanmean(l) for l in acc_list]), n=args.batch_size)
+        batch_timer.update(time.time() - end)
+        end = time.time()
         
         if args.rank == 0:
             # update pbar's status
-            s = f'Validation [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}], Accuracy: {avg_acc:.4f}'
+            s = f'Validation [{epoch}/{args.max_epochs}][{idx + 1}/{len(loader)}] ' \
+                f'Time/b: {batch_timer.val:.2f}s ({batch_timer.avg:.2f}s) ' \
+                f'Accuracy/b: {valid_acc.val:.4f} ({valid_acc.avg:.4f})'
             pbar.set_description(s)
     
-    return avg_acc
+    return valid_acc.avg
 
 
 def run_training(
