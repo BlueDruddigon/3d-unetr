@@ -223,6 +223,7 @@ def run_training(
                   f'current valid_acc: {valid_avg_acc:.4f}, best_valid_acc: {best_valid_acc:.4f}'
                 )
                 save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
+                break
             
             if (epoch+1) % args.save_freq == 0:  # save checkpoint frequently
                 save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
