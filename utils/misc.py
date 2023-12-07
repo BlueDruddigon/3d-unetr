@@ -43,7 +43,7 @@ def save_checkpoint(
     if scheduler is not None:
         save_dict['scheduler'] = scheduler.state_dict()
     if not filename:
-        filename = os.path.join(args.save_dir, f'weights-{epoch}-{best_acc:.2f}.pt')
+        filename = os.path.join(args.save_dir, f'weights-{epoch}-{best_acc:.2f}.pth')
     torch.save(save_dict, filename)
     print('Saved checkpoint', filename)
 

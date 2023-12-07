@@ -221,7 +221,7 @@ def run_training(
                   model,
                   epoch,
                   args,
-                  filename='model_best.pt',
+                  filename='model_best.pth',
                   best_acc=best_valid_acc,
                   optimizer=optimizer,
                   scheduler=scheduler
@@ -232,7 +232,15 @@ def run_training(
                   f'Early Stopping at epoch {epoch}, '
                   f'current valid_acc: {valid_avg_acc:.4f}, best_valid_acc: {best_valid_acc:.4f}'
                 )
-                save_checkpoint(model, epoch, args, best_acc=best_valid_acc, optimizer=optimizer, scheduler=scheduler)
+                save_checkpoint(
+                  model,
+                  epoch,
+                  args,
+                  filename='model_last.pth',
+                  best_acc=best_valid_acc,
+                  optimizer=optimizer,
+                  scheduler=scheduler
+                )
                 break
             
             if (epoch+1) % args.save_freq == 0 and not update_best_valid:  # save checkpoint frequently
