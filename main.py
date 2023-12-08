@@ -173,6 +173,7 @@ def load_checkpoint(
   lr_scheduler: Optional[LRScheduler]
 ) -> Tuple[argparse.Namespace, Union[nn.Module, DDP], optim.Optimizer, Optional[LRScheduler]]:
     args.start_epoch = 0
+    args.best_valid_acc = 0.
     if args.resume:
         ckpt = torch.load(args.resume, map_location=torch.device('cpu'))
         if args.distributed:  # DDP
@@ -184,6 +185,7 @@ def load_checkpoint(
         if lr_scheduler is not None and 'lr_scheduler' in ckpt.keys():
             lr_scheduler.load_state_dict(ckpt['lr_scheduler'])
         args.start_epoch = ckpt['epoch'] + 1
+        args.best_valid_acc = ckpt['best_valid_acc']
     else:
         print('Training from scratch.')
     

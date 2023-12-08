@@ -179,7 +179,7 @@ def run_training(
     acc_func = DiceMetric(include_background=True, reduction='mean', get_not_nans=True)
     
     # training
-    best_valid_acc = 0.
+    best_valid_acc = args.best_valid_acc
     for epoch in range(args.start_epoch, args.max_epochs):
         if args.distributed:  # update dataloader sampler's epoch and synchronize between all processes
             train_loader.sampler.set_epoch(epoch)
